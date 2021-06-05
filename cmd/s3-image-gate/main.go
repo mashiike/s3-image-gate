@@ -23,14 +23,16 @@ var filter = &logutils.LevelFilter{
 }
 
 func main() {
-	var debug, showVersion, viewIndex bool
-	var bucket, keyPrefix string
+	var debug, showHelp, showVersion bool
+	cfg := imagegate.DefaultConfig()
 
 	flag.BoolVar(&debug, "debug", false, "enable debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version")
-	flag.BoolVar(&viewIndex, "index", false, "handle index")
-	flag.StringVar(&bucket, "bucket", "", "upload dest bucket")
-	flag.StringVar(&keyPrefix, "key-prefix", "", "upload dest key prefix")
+	flag.BoolVar(&showHelp, "help", false, "show help")
+	flag.BoolVar(&cfg.ViewIndex, "index", cfg.ViewIndex, "handle index")
+	flag.StringVar(&cfg.Bucket, "bucket", cfg.Bucket, "upload dest bucket (required)")
+	flag.StringVar(&cfg.KeyPrefix, "key-prefix", cfg.KeyPrefix, "upload dest key prefix")
+	flag.IntVar(&cfg.Port, "port", cfg.Port, "http port")
 	flag.VisitAll(func(f *flag.Flag) {
 		if s := os.Getenv(strings.ToUpper("S3_IMAGE_GATE_" + strings.ReplaceAll(f.Name, "-", "_"))); s != "" {
 			f.Value.Set(s)
@@ -42,16 +44,17 @@ func main() {
 		fmt.Println("s3-image-gate version", version)
 		return
 	}
+	if showHelp {
+		fmt.Println("Usage of s3-image-gate")
+		flag.PrintDefaults()
+		return
+	}
 
 	if debug {
 		filter.MinLevel = logutils.LogLevel("debug")
 	}
 	log.SetOutput(filter)
 
-	cfg := imagegate.DefaultConfig()
-	cfg.ViewIndex = viewIndex
-	cfg.Bucket = bucket
-	cfg.KeyPrefix = keyPrefix
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM|syscall.SIGHUP|syscall.SIGINT)
 	defer stop()
 
